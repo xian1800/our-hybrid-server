@@ -18,26 +18,39 @@
 package es.uvigo.esei.dai.hybridserver;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
+
+import es.uvigo.esei.dai.hybridserver.http.HTTPParseException;
+import es.uvigo.esei.dai.hybridserver.http.HTTPRequest;
+import es.uvigo.esei.dai.hybridserver.http.HTTPRequestMethod;
+import es.uvigo.esei.dai.hybridserver.http.HTTPResponse;
+import es.uvigo.esei.dai.hybridserver.http.HTTPResponseStatus;
 
 public class HybridServer implements AutoCloseable {
   private static final int SERVICE_PORT = 8888;
+  private final Map<String, String> pages;
   private Thread serverThread;
   private boolean stop;
 
   public HybridServer() {
-    // TODO Inicializar con los parámetros por defecto
+    this.pages = new LinkedHashMap<>();
   }
 
   public HybridServer(Map<String, String> pages) {
-    // TODO Inicializar con la base de datos en memoria conteniendo "pages"
+    this.pages = new LinkedHashMap<>(pages);
   }
 
   public HybridServer(Properties properties) {
-    // TODO Inicializar con los parámetros recibidos
+    this();
   }
 
   public int getPort() {
@@ -54,7 +67,22 @@ public class HybridServer implements AutoCloseable {
               if (stop)
                 break;
 
-              // TODO Responder al cliente
+              HTTPResponse response;
+
+              try {
+                final HTTPRequest request = new HTTPRequest(
+                  new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)
+                );
+                response = HybridServer.this.createResponse(request);
+              } catch (HTTPParseException e) {
+                response = new HTTPResponse();
+                response.setStatus(HTTPResponseStatus.S400);
+              }
+
+              try (Writer writer = new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)) {
+                response.print(writer);
+                writer.flush();
+              }
             }
           }
         } catch (IOException e) {
@@ -85,5 +113,62 @@ public class HybridServer implements AutoCloseable {
     }
 
     this.serverThread = null;
+  }
+
+  private HTTPResponse createResponse(HTTPRequest request) {
+    final HTTPResponse response = new HTTPResponse();
+    final String resourceName = request.getResourceName();
+
+    if (request.getMethod() == HTTPRequestMethod.GET && resourceName.isEmpty()) {
+      response.setContent("<html><body><h1>Hybrid Server</h1></body></html>");
+      response.putParameter("Content-Type", "text/html");
+    } else if (resourceName.equals("html")) {
+      this.createHtmlResponse(request, response);
+    } else {
+      response.setStatus(HTTPResponseStatus.S400);
+    }
+
+    return response;
+  }
+
+  private void createHtmlResponse(HTTPRequest request, HTTPResponse response) {
+    if (request.getMethod() == HTTPRequestMethod.GET) {
+      final String uuid = request.getResourceParameters().get("uuid");
+
+      if (uuid == null) {
+        final StringBuilder content = new StringBuilder("<html><body>");
+
+        for (String pageUuid : this.pages.keySet()) {
+          content.append("<a href=\"html?uuid=").append(pageUuid).append("\">")
+            .append(pageUuid).append("</a>");
+        }
+
+        response.setContent(content.append("</body></html>").toString());
+        response.putParameter("Content-Type", "text/html");
+      } else if (this.pages.containsKey(uuid)) {
+        response.setContent(this.pages.get(uuid));
+        response.putParameter("Content-Type", "text/html");
+      } else {
+        response.setStatus(HTTPResponseStatus.S404);
+      }
+    } else if (request.getMethod() == HTTPRequestMethod.POST) {
+      final Map<String, String> parameters = request.getResourceParameters();
+
+      if (parameters.size() != 1 || !parameters.containsKey("html")) {
+        response.setStatus(HTTPResponseStatus.S400);
+      } else {
+        final String uuid = UUID.randomUUID().toString();
+        this.pages.put(uuid, parameters.get("html"));
+        response.setContent("<a href=\"html?uuid=" + uuid + "\">" + uuid + "</a>");
+        response.putParameter("Content-Type", "text/html");
+      }
+    } else if (request.getMethod() == HTTPRequestMethod.DELETE) {
+      final String uuid = request.getResourceParameters().get("uuid");
+
+      if (uuid == null || this.pages.remove(uuid) == null)
+        response.setStatus(HTTPResponseStatus.S404);
+    } else {
+      response.setStatus(HTTPResponseStatus.S400);
+    }
   }
 }
