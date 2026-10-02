@@ -120,7 +120,11 @@ public class HybridServer implements AutoCloseable {
     final String resourceName = request.getResourceName();
 
     if (request.getMethod() == HTTPRequestMethod.GET && resourceName.isEmpty()) {
-      response.setContent("<html><body><h1>Hybrid Server</h1></body></html>");
+      response.setContent(
+        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><title>Hybrid Server</title></head>"
+          + "<body><h1>Hybrid Server</h1><p>Authors: Lucía Furong Fleischer González, Xián González Pavón</p>"
+          + "<p><a href=\"/html\">List of HTML pages</a></p></body></html>"
+      );
       response.putParameter("Content-Type", "text/html");
     } else if (resourceName.equals("html")) {
       this.createHtmlResponse(request, response);
@@ -165,8 +169,12 @@ public class HybridServer implements AutoCloseable {
     } else if (request.getMethod() == HTTPRequestMethod.DELETE) {
       final String uuid = request.getResourceParameters().get("uuid");
 
-      if (uuid == null || this.pages.remove(uuid) == null)
+      if (uuid == null || this.pages.remove(uuid) == null) {
         response.setStatus(HTTPResponseStatus.S404);
+      } else {
+        response.setContent("<html><body><p>Page deleted successfully.</p></body></html>");
+        response.putParameter("Content-Type", "text/html");
+      }
     } else {
       response.setStatus(HTTPResponseStatus.S400);
     }
