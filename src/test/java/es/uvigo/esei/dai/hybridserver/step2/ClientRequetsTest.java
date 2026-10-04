@@ -105,7 +105,7 @@ public class ClientRequetsTest extends HybridServerTestCase {
     final String content = "<html><body>Testing POST</body></html>";
 
     // Envío de la página y extracción del uuid de la nueva página
-    final String responseContent = postContent(url + "html", singletonMap("html", content));
+    final String responseContent = postContent(url + "html?uuid=" + invalidUUID, singletonMap("html", content));
     final String uuid = extractUUIDFromText(responseContent);
     assertThat(uuid, is(notNullValue()));
 
