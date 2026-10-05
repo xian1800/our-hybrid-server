@@ -20,72 +20,97 @@ package es.uvigo.esei.dai.hybridserver.http;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class HTTPResponse {
+  private HTTPResponseStatus status;
+  private String version;
+  private String content;
+  private final Map<String, String> parameters;
+
   public HTTPResponse() {
-    // TODO Completar
+    this.status = HTTPResponseStatus.S200;
+    this.version = HTTPHeaders.HTTP_1_1.getHeader();
+    this.content = null;
+    this.parameters = new LinkedHashMap<>();
   }
 
   public HTTPResponseStatus getStatus() {
-    // TODO Completar
-    return null;
+    return this.status;
   }
 
   public void setStatus(HTTPResponseStatus status) {
-    // TODO Completar
+    this.status = status;
   }
 
   public String getVersion() {
-    // TODO Completar
-    return null;
+    return this.version;
   }
 
   public void setVersion(String version) {
-    // TODO Completar
+    this.version = version;
   }
 
   public String getContent() {
-    // TODO Completar
-    return null;
+    return this.content;
   }
 
   public void setContent(String content) {
-    // TODO Completar
+    this.content = content;
   }
 
   public Map<String, String> getParameters() {
-    // TODO Completar
-    return null;
+    return this.parameters;
   }
 
   public String putParameter(String name, String value) {
-    // TODO Completar
-    return null;
+    return this.parameters.put(name, value);
   }
 
   public boolean containsParameter(String name) {
-    // TODO Completar
-    return false;
+    return this.parameters.containsKey(name);
   }
 
   public String removeParameter(String name) {
-    // TODO Completar
-    return null;
+    return this.parameters.remove(name);
   }
 
   public void clearParameters() {
-    // TODO Completar
+    this.parameters.clear();
   }
 
   public List<String> listParameters() {
-    // TODO Completar
-    return null;
+    return new ArrayList<>(this.parameters.keySet());
   }
 
   public void print(Writer writer) throws IOException {
-    // TODO Completar
+    writer.write(this.version);
+    writer.write(" ");
+    writer.write(Integer.toString(this.status.getCode()));
+    writer.write(" ");
+    writer.write(this.status.getStatus());
+    writer.write("\r\n");
+
+    if (this.content != null && !this.content.isEmpty() && !this.parameters.containsKey(HTTPHeaders.CONTENT_LENGTH.getHeader())) {
+      this.parameters.put(HTTPHeaders.CONTENT_LENGTH.getHeader(), Integer.toString(this.content.getBytes(StandardCharsets.UTF_8).length));
+    }
+
+    for (Map.Entry<String, String> parameter : this.parameters.entrySet()) {
+      writer.write(parameter.getKey());
+      writer.write(": ");
+      writer.write(parameter.getValue());
+      writer.write("\r\n");
+    }
+
+    writer.write("\r\n");
+
+    if (this.content != null && !this.content.isEmpty()) {
+      writer.write(this.content);
+    }
   }
 
   @Override

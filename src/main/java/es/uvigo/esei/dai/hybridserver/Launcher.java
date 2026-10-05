@@ -19,6 +19,8 @@ package es.uvigo.esei.dai.hybridserver;
 
 public class Launcher {
   public static void main(String[] args) {
-    // TODO Ejecutar el servidor
+    final HybridServer server = new HybridServer();
+    Runtime.getRuntime().addShutdownHook(new Thread(server::close));
+    server.start();
   }
 }

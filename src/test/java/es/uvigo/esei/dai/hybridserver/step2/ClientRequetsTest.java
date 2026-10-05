@@ -17,6 +17,23 @@
  */
 package es.uvigo.esei.dai.hybridserver.step2;
 
+import java.io.IOException;
+import static java.util.Collections.singletonMap;
+import java.util.Map;
+import static java.util.stream.Collectors.toMap;
+import java.util.stream.Stream;
+
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import es.uvigo.esei.dai.hybridserver.HybridServer;
+import es.uvigo.esei.dai.hybridserver.utils.HybridServerTestCase;
+import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.deleteContent;
 import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.deleteStatus;
 import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.extractUUIDFromText;
 import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.getContent;
@@ -24,23 +41,6 @@ import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.getContentWithType;
 import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.getStatus;
 import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.postContent;
 import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.postStatus;
-import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.toMap;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
-
-import java.io.IOException;
-import java.util.Map;
-import java.util.stream.Stream;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import es.uvigo.esei.dai.hybridserver.HybridServer;
-import es.uvigo.esei.dai.hybridserver.utils.HybridServerTestCase;
 
 public class ClientRequetsTest extends HybridServerTestCase {
   private String invalidUUID;
@@ -105,7 +105,7 @@ public class ClientRequetsTest extends HybridServerTestCase {
     final String content = "<html><body>Testing POST</body></html>";
 
     // Envío de la página y extracción del uuid de la nueva página
-    final String responseContent = postContent(url + "html", singletonMap("html", content));
+    final String responseContent = postContent(url + "html?uuid=" + invalidUUID, singletonMap("html", content));
     final String uuid = extractUUIDFromText(responseContent);
     assertThat(uuid, is(notNullValue()));
 
@@ -123,7 +123,8 @@ public class ClientRequetsTest extends HybridServerTestCase {
     final String uuid = pages[4][0];
     final String url = this.url + "html?uuid=" + uuid;
 
-    assertThat("The page couldn't be deleted", deleteStatus(url), is(equalTo(200)));
+    final String responseContent = deleteContent(url);
+    assertThat(responseContent, containsString("Page deleted successfully"));
 
     assertThat("The page already exists", getStatus(url), is(equalTo(404)));
   }

@@ -17,22 +17,24 @@
  */
 package es.uvigo.esei.dai.hybridserver.step1;
 
-import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.getContentWithType;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.MatcherAssert.assertThat;
-
 import java.io.IOException;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.Test;
 
 import es.uvigo.esei.dai.hybridserver.utils.HybridServerTestCase;
+import static es.uvigo.esei.dai.hybridserver.utils.TestUtils.getContentWithType;
 
 public class WelcomePageTest extends HybridServerTestCase {
 
   @Test
   public void testWelcome() throws IOException {
     for (int i = 0; i < 10; i++) {
-      assertThat(getContentWithType(url, "text/html"), containsString("Hybrid Server"));
+      final String content = getContentWithType(url, "text/html");
+
+      assertThat(content, containsString("Hybrid Server"));
+      assertThat(content, containsString("href=\"/html\""));
     }
   }
 }

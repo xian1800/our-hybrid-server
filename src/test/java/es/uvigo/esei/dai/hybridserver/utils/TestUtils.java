@@ -17,8 +17,6 @@
  */
 package es.uvigo.esei.dai.hybridserver.utils;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -33,6 +31,7 @@ import org.apache.http.NameValuePair;
 import org.apache.http.client.fluent.Form;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.util.EntityUtils;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public final class TestUtils {
   private TestUtils() {
@@ -189,6 +188,18 @@ public final class TestUtils {
       .addHeader("Connection", "close")
       .addHeader("Content-encoding", "UTF-8")
     .execute().returnResponse().getStatusLine().getStatusCode();
+  }
+
+  public static String deleteContent(String url) throws IOException {
+    final HttpResponse response = Request.Delete(url)
+      .addHeader("Connection", "close")
+      .addHeader("Content-encoding", "UTF-8")
+      .execute()
+    .returnResponse();
+
+    assertEquals(200, response.getStatusLine().getStatusCode());
+
+    return EntityUtils.toString(response.getEntity());
   }
 
   /**
