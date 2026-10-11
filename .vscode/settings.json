@@ -1,3 +1,9 @@
 {
-    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable"
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable",
+    "chat.tools.terminal.autoApprove": {
+        "/^git status --short && command -v pdftotext \\|\\| true && find src/main/java -type f -print$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }
