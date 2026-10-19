@@ -17,10 +17,42 @@
  */
 package es.uvigo.esei.dai.hybridserver;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
+
 public class Launcher {
   public static void main(String[] args) {
-    final HybridServer server = new HybridServer();
+    if (args.length > 1) {
+      printUsage();
+      return;
+    }
+
+    final Properties properties = new Properties();
+
+    if (args.length == 1) {
+      try (FileInputStream input = new FileInputStream(args[0])) {
+        properties.load(input);
+      } catch (IOException e) {
+        System.err.println("Could not load configuration file '" + args[0] + "': " + e.getMessage());
+        return;
+      }
+    }
+
+    final HybridServer server;
+
+    try {
+      server = new HybridServer(properties);
+    } catch (IllegalArgumentException e) {
+      System.err.println("Invalid server configuration: " + e.getMessage());
+      return;
+    }
+
     Runtime.getRuntime().addShutdownHook(new Thread(server::close));
     server.start();
+  }
+
+  private static void printUsage() {
+    System.err.println("Usage: java es.uvigo.esei.dai.hybridserver.Launcher [config.props]");
   }
 }

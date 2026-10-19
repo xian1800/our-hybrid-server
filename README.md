@@ -172,6 +172,28 @@ db.password=hsdbpass
 
 **En el caso de que se reciba más de un parámetro deberá mostrarse un mensaje de error explicando cómo ejecutar correctamente la aplicación.**
 
+The configuration file is optional. Run the server with its default settings using:
+
+```bash
+mvn exec:java
+```
+
+To use a properties file, pass its path as the single application argument:
+
+```bash
+mvn exec:java -Dexec.args="config.props"
+```
+
+For example, `config.props` can contain:
+
+```properties
+numClients=50
+port=8888
+db.url=jdbc:mysql://localhost:3306/hstestdb
+db.user=hsdb
+db.password=hsdbpass
+```
+
 ## B. Segunda Entrega
 
 La segunda entrega está centrada en la inclusión de XML y en el servicio P2P.

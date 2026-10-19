@@ -24,14 +24,19 @@ import java.io.Writer;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import es.uvigo.esei.dai.hybridserver.dao.HtmlPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.InMemoryHtmlPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.JdbcHtmlPageStore;
 import es.uvigo.esei.dai.hybridserver.http.HTTPParseException;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequest;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequestMethod;
@@ -39,38 +44,66 @@ import es.uvigo.esei.dai.hybridserver.http.HTTPResponse;
 import es.uvigo.esei.dai.hybridserver.http.HTTPResponseStatus;
 
 public class HybridServer implements AutoCloseable {
-  private static final int SERVICE_PORT = 8888;
+  private static final int DEFAULT_SERVICE_PORT = 8888;
   private static final int DEFAULT_NUM_CLIENTS = 50;
-  private final Map<String, String> pages;
+  private static final String DEFAULT_DB_URL = "jdbc:mysql://localhost:3306/hstestdb";
+  private static final String DEFAULT_DB_USER = "hsdb";
+  private static final String DEFAULT_DB_PASSWORD = "hsdbpass";
+
+  private final int servicePort;
+  private final int numClients;
+  private final HtmlPageStore pages;
+  private ServerSocket serverSocket;
   private Thread serverThread;
   private ExecutorService clientPool;
   private volatile boolean stop;
 
   public HybridServer() {
-    this.pages = new ConcurrentHashMap<>();
+    this(defaultProperties());
   }
 
   public HybridServer(Map<String, String> pages) {
-    this.pages = new ConcurrentHashMap<>(pages);
+    this(defaultConfiguration(), new InMemoryHtmlPageStore(pages));
   }
 
   public HybridServer(Properties properties) {
-    this();
+    this(readConfiguration(properties));
+  }
+
+  private HybridServer(Configuration configuration) {
+    this(configuration, new JdbcHtmlPageStore(
+      configuration.dbUrl, configuration.dbUser, configuration.dbPassword
+    ));
+  }
+
+  private HybridServer(Configuration configuration, HtmlPageStore pages) {
+    this.servicePort = configuration.port;
+    this.numClients = configuration.numClients;
+    this.pages = pages;
   }
 
   public int getPort() {
-    return SERVICE_PORT;
+    return this.servicePort;
   }
 
   public void start() {
+    final ServerSocket serverSocket;
+
+    try {
+      serverSocket = new ServerSocket(this.servicePort);
+    } catch (IOException e) {
+      throw new RuntimeException("Could not start server on port " + this.servicePort, e);
+    }
+
     this.stop = false;
-    this.clientPool = Executors.newFixedThreadPool(DEFAULT_NUM_CLIENTS);
-    this.serverThread = new Thread(this::acceptClients);
+    this.serverSocket = serverSocket;
+    this.clientPool = Executors.newFixedThreadPool(this.numClients);
+    this.serverThread = new Thread(() -> this.acceptClients(serverSocket));
     this.serverThread.start();
   }
 
-  private void acceptClients() {
-    try (final ServerSocket serverSocket = new ServerSocket(SERVICE_PORT)) {
+  private void acceptClients(ServerSocket serverSocket) {
+    try (serverSocket) {
       while (!this.stop) {
         final Socket socket = serverSocket.accept();
 
@@ -126,8 +159,8 @@ public class HybridServer implements AutoCloseable {
 
     this.stop = true;
 
-    try (Socket socket = new Socket("localhost", SERVICE_PORT)) {
-      // Esta conexión se hace, simplemente, para "despertar" el hilo servidor
+    try {
+      this.serverSocket.close();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -145,10 +178,11 @@ public class HybridServer implements AutoCloseable {
     }
 
     this.serverThread = null;
+    this.serverSocket = null;
     this.clientPool = null;
   }
 
-  private HTTPResponse createResponse(HTTPRequest request) {
+  private HTTPResponse createResponse(HTTPRequest request) throws SQLException {
     final HTTPResponse response = new HTTPResponse();
     final String resourceName = request.getResourceName();
 
@@ -168,25 +202,29 @@ public class HybridServer implements AutoCloseable {
     return response;
   }
 
-  private void createHtmlResponse(HTTPRequest request, HTTPResponse response) {
+  private void createHtmlResponse(HTTPRequest request, HTTPResponse response) throws SQLException {
     if (request.getMethod() == HTTPRequestMethod.GET) {
       final String uuid = request.getResourceParameters().get("uuid");
 
       if (uuid == null) {
         final StringBuilder content = new StringBuilder("<html><body>");
 
-        for (String pageUuid : this.pages.keySet()) {
+        for (String pageUuid : this.pages.listUuids()) {
           content.append("<a href=\"html?uuid=").append(pageUuid).append("\">")
             .append(pageUuid).append("</a>");
         }
 
         response.setContent(content.append("</body></html>").toString());
         response.putParameter("Content-Type", "text/html");
-      } else if (this.pages.containsKey(uuid)) {
-        response.setContent(this.pages.get(uuid));
-        response.putParameter("Content-Type", "text/html");
       } else {
-        response.setStatus(HTTPResponseStatus.S404);
+        final Optional<String> page = this.pages.findContent(uuid);
+
+        if (page.isPresent()) {
+          response.setContent(page.get());
+          response.putParameter("Content-Type", "text/html");
+        } else {
+          response.setStatus(HTTPResponseStatus.S404);
+        }
       }
     } else if (request.getMethod() == HTTPRequestMethod.POST) {
       final Map<String, String> parameters = request.getResourceParameters();
@@ -196,14 +234,14 @@ public class HybridServer implements AutoCloseable {
         response.setStatus(HTTPResponseStatus.S400);
       } else {
         final String uuid = UUID.randomUUID().toString();
-        this.pages.put(uuid, parameters.get("html"));
+        this.pages.insert(uuid, parameters.get("html"));
         response.setContent("<a href=\"html?uuid=" + uuid + "\">" + uuid + "</a>");
         response.putParameter("Content-Type", "text/html");
       }
     } else if (request.getMethod() == HTTPRequestMethod.DELETE) {
       final String uuid = request.getResourceParameters().get("uuid");
 
-      if (uuid == null || this.pages.remove(uuid) == null) {
+      if (uuid == null || !this.pages.delete(uuid)) {
         response.setStatus(HTTPResponseStatus.S404);
       } else {
         response.setContent("<html><body><p>Page deleted successfully.</p></body></html>");
@@ -211,6 +249,75 @@ public class HybridServer implements AutoCloseable {
       }
     } else {
       response.setStatus(HTTPResponseStatus.S400);
+    }
+  }
+
+  private static Properties defaultProperties() {
+    final Properties properties = new Properties();
+    properties.setProperty("port", Integer.toString(DEFAULT_SERVICE_PORT));
+    properties.setProperty("numClients", Integer.toString(DEFAULT_NUM_CLIENTS));
+    properties.setProperty("db.url", DEFAULT_DB_URL);
+    properties.setProperty("db.user", DEFAULT_DB_USER);
+    properties.setProperty("db.password", DEFAULT_DB_PASSWORD);
+    return properties;
+  }
+
+  private static Configuration defaultConfiguration() {
+    return readConfiguration(new Properties());
+  }
+
+  private static Configuration readConfiguration(Properties overrides) {
+    final Properties properties = defaultProperties();
+    properties.putAll(Objects.requireNonNull(overrides, "properties"));
+
+    final int port = parseInteger(properties, "port");
+    final int numClients = parseInteger(properties, "numClients");
+
+    if (port < 1 || port > 65535)
+      throw new IllegalArgumentException("Configuration property 'port' must be between 1 and 65535");
+
+    if (numClients < 1)
+      throw new IllegalArgumentException("Configuration property 'numClients' must be greater than 0");
+
+    return new Configuration(
+      port,
+      numClients,
+      requireProperty(properties, "db.url"),
+      requireProperty(properties, "db.user"),
+      properties.getProperty("db.password")
+    );
+  }
+
+  private static int parseInteger(Properties properties, String key) {
+    try {
+      return Integer.parseInt(requireProperty(properties, key));
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Configuration property '" + key + "' must be an integer", e);
+    }
+  }
+
+  private static String requireProperty(Properties properties, String key) {
+    final String value = properties.getProperty(key);
+
+    if (value == null || value.trim().isEmpty())
+      throw new IllegalArgumentException("Configuration property '" + key + "' must not be empty");
+
+    return value.trim();
+  }
+
+  private static final class Configuration {
+    private final int port;
+    private final int numClients;
+    private final String dbUrl;
+    private final String dbUser;
+    private final String dbPassword;
+
+    private Configuration(int port, int numClients, String dbUrl, String dbUser, String dbPassword) {
+      this.port = port;
+      this.numClients = numClients;
+      this.dbUrl = dbUrl;
+      this.dbUser = dbUser;
+      this.dbPassword = dbPassword;
     }
   }
 }
