@@ -25,28 +25,32 @@
 		</contributor>
 	</contributors>
 
-	<!-- developers>
+	<developers>
 		<developer>
 			<id>xgpavon23</id>
 			<email>xgpavon23@esei.uvigo.es</email>
 			<name>Xián González Pavón</name>
-			<organization>Escola Superior de Enxeñaría Informática - Universidade de
-	Vigo</organization>
+			<organization>Escola Superior de Enxeñaría Informática - Universidade de Vigo</organization>
 			<roles>
 				<role>student</role>
 			</roles>
+			<properties>
+				<dni>54231669S</dni>
+			</properties>
 		</developer>
 		<developer>
-			<id>[Login el email de la ESEI (p.ej. student@esei.uvigo.es => student)]</id>
-			<email>[xxx@esei.uvigo.es]</email>
-			<name>[Nombre completo]</name>
-			<organization>Escola Superior de Enxeñaría Informática - Universidade de
-	Vigo</organization>
+			<id>luciafurong.fleischer</id>
+			<email>luciafurong.fleischer@esei.uvigo.es</email>
+			<name>Lucía Furong Fleischer González</name>
+			<organization>Escola Superior de Enxeñaría Informática - Universidade de Vigo</organization>
 			<roles>
 				<role>student</role>
 			</roles>
+			<properties>
+				<dni>42250321B</dni>
+			</properties>
 		</developer>
-	</developers -->
+	</developers>
 
 	<properties>
 		<group.name>DAI1_Equipo1.1</group.name>
