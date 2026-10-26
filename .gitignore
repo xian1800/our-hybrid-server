@@ -9,4 +9,9 @@ target
 #General
 bak
 *.tar.gz
+*.pdf
+*.PDF
+*.zip
+*.log
+*.tmp
 
