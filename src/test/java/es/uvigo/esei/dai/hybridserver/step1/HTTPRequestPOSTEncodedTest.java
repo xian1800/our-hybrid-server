@@ -9,7 +9,9 @@ import static org.hamcrest.collection.IsMapContaining.hasEntry;
 import static org.hamcrest.collection.IsMapWithSize.aMapWithSize;
 import static org.hamcrest.text.IsEmptyString.emptyString;
 
+import java.io.ByteArrayInputStream;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -111,6 +113,55 @@ public class HTTPRequestPOSTEncodedTest {
   @Test
   public final void testToString() {
     assertThat(request.toString(), is(equalTo(requestText)));
+  }
+
+  @Test
+  public final void testFormValuesAreDecodedOnceBeforeParameterParsing() throws Exception {
+    final String body = "value=a%2Bb%26c&literal=%252B+plus";
+    final String requestText =
+      "POST / HTTP/1.1\r\n"
+      + "Content-Type: application/x-www-form-urlencoded; charset=UTF-8\r\n"
+      + "Content-Length: " + body.length() + "\r\n"
+      + "\r\n"
+      + body;
+    final HTTPRequest parsedRequest = new HTTPRequest(new StringReader(requestText));
+
+    assertThat(parsedRequest.getResourceParameters(), hasEntry("value", "a+b&c"));
+    assertThat(parsedRequest.getResourceParameters(), hasEntry("literal", "%2B plus"));
+    assertThat(parsedRequest.getContent(), is(equalTo("value=a+b&c&literal=%2B plus")));
+  }
+
+  @Test
+  public final void testNonFormContentIsNotUrlDecoded() throws Exception {
+    final String body = "value=a%2Bb%26c";
+    final String requestText =
+      "POST / HTTP/1.1\r\n"
+      + "Content-Type: text/plain\r\n"
+      + "Content-Length: " + body.length() + "\r\n"
+      + "\r\n"
+      + body;
+    final HTTPRequest parsedRequest = new HTTPRequest(new StringReader(requestText));
+
+    assertThat(parsedRequest.getResourceParameters(), hasEntry("value", "a%2Bb%26c"));
+    assertThat(parsedRequest.getContent(), is(equalTo(body)));
+  }
+
+  @Test
+  public final void testContentLengthCountsUtf8Bytes() throws Exception {
+    final String body = "message=Olá";
+    final int contentLength = body.getBytes(StandardCharsets.UTF_8).length;
+    final String requestText =
+      "POST / HTTP/1.1\r\n"
+      + "Content-Type: application/x-www-form-urlencoded\r\n"
+      + "Content-Length: " + contentLength + "\r\n"
+      + "\r\n"
+      + body;
+    final HTTPRequest parsedRequest = new HTTPRequest(
+      new ByteArrayInputStream(requestText.getBytes(StandardCharsets.UTF_8))
+    );
+
+    assertThat(parsedRequest.getContent(), is(equalTo(body)));
+    assertThat(parsedRequest.getResourceParameters(), hasEntry("message", "Olá"));
   }
 
 }

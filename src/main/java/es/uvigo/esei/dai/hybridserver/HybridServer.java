@@ -18,7 +18,6 @@
 package es.uvigo.esei.dai.hybridserver;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.ServerSocket;
@@ -126,7 +125,7 @@ public class HybridServer implements AutoCloseable {
 
       try {
         final HTTPRequest request = new HTTPRequest(
-          new InputStreamReader(clientSocket.getInputStream(), StandardCharsets.UTF_8)
+          clientSocket.getInputStream()
         );
         response = this.createResponse(request);
       } catch (HTTPParseException | NumberFormatException e) {
@@ -167,10 +166,8 @@ public class HybridServer implements AutoCloseable {
 
     try {
       this.serverThread.join();
-      this.clientPool.shutdown();
-
-      if (!this.clientPool.awaitTermination(30, TimeUnit.SECONDS))
-        this.clientPool.shutdownNow();
+      this.clientPool.shutdownNow();
+      this.clientPool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
     } catch (InterruptedException e) {
       this.clientPool.shutdownNow();
       Thread.currentThread().interrupt();
