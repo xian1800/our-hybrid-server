@@ -34,7 +34,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import es.uvigo.esei.dai.hybridserver.dao.HtmlPageStore;
-import es.uvigo.esei.dai.hybridserver.dao.InMemoryHtmlPageStore;
 import es.uvigo.esei.dai.hybridserver.dao.JdbcHtmlPageStore;
 import es.uvigo.esei.dai.hybridserver.http.HTTPParseException;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequest;
@@ -59,10 +58,6 @@ public class HybridServer implements AutoCloseable {
 
   public HybridServer() {
     this(defaultProperties());
-  }
-
-  public HybridServer(Map<String, String> pages) {
-    this(defaultConfiguration(), new InMemoryHtmlPageStore(pages));
   }
 
   public HybridServer(Properties properties) {
