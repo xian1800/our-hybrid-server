@@ -7,6 +7,22 @@ CREATE TABLE IF NOT EXISTS HTML (
     content LONGTEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS xsd (
+    uuid VARCHAR(36) PRIMARY KEY,
+    content LONGTEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS xml (
+    uuid VARCHAR(36) PRIMARY KEY,
+    content LONGTEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS xslt (
+    uuid VARCHAR(36) PRIMARY KEY,
+    content LONGTEXT NOT NULL
+    xsd CHAR(36) -- contendrá el UUID del XSD vinculado
+);
+
 -- The project expects the application user hsdb to be able to access the schema.
 -- In Docker, the application connects from outside the container, so use '%' instead of 'localhost'.
 CREATE USER IF NOT EXISTS 'hsdb'@'%' IDENTIFIED BY 'hsdbpass';
