@@ -1,5 +1,7 @@
 # Servidor Híbrido de Documentos Estructurados
 
+For the second-release storage architecture, HTTP/DAO flow, database schema, and test guidance, see [ENTREGA2.md](ENTREGA2.md).
+
 ## Objetivo
 
 El objetivo principal de esta práctica es el desarrollo de un proyecto en el cual se apliquen las herramientas y tecnologías vistas en la asignatura.

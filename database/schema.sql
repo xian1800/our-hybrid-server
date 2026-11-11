@@ -7,20 +7,20 @@ CREATE TABLE IF NOT EXISTS HTML (
     content LONGTEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS xsd (
+CREATE TABLE IF NOT EXISTS XSD (
     uuid VARCHAR(36) PRIMARY KEY,
     content LONGTEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS xml (
+CREATE TABLE IF NOT EXISTS XML (
     uuid VARCHAR(36) PRIMARY KEY,
     content LONGTEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS xslt (
+CREATE TABLE IF NOT EXISTS XSLT (
     uuid VARCHAR(36) PRIMARY KEY,
-    content LONGTEXT NOT NULL
-    xsd CHAR(36) -- contendrá el UUID del XSD vinculado
+    content LONGTEXT NOT NULL,
+    xsd CHAR(36) NOT NULL
 );
 
 -- The project expects the application user hsdb to be able to access the schema.

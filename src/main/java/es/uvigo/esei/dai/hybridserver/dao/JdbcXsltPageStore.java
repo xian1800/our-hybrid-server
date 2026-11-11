@@ -11,82 +11,104 @@ import java.util.Objects;
 import java.util.Optional;
 
 public final class JdbcXsltPageStore implements XsltPageStore {
+  private final String url;
+  private final String user;
+  private final String password;
 
-    private final String url;
-    private final String user;
-    private final String password;
+  public JdbcXsltPageStore(String url, String user, String password) {
+    this.url = Objects.requireNonNull(url, "url");
+    this.user = Objects.requireNonNull(user, "user");
+    this.password = Objects.requireNonNull(password, "password");
+  }
 
-    public JdbcXsltPageStore(String url, String user, String password) {
-        this.url = Objects.requireNonNull(url, "url");
-        this.user = Objects.requireNonNull(user, "user");
-        this.password = Objects.requireNonNull(password, "password");
+  @Override
+  public List<String> listUuids() throws SQLException {
+    final List<String> uuids = new ArrayList<>();
+
+    try (
+      Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
+      PreparedStatement statement = connection.prepareStatement("SELECT uuid FROM XSLT");
+      ResultSet results = statement.executeQuery()
+    ) {
+      while (results.next())
+        uuids.add(results.getString("uuid"));
     }
 
-    @Override
-    public List<String> listUuids() throws SQLException {
-        final List<String> uuids = new ArrayList<>();
+    return uuids;
+  }
 
-        try (
-                Connection connection = DriverManager.getConnection(this.url, this.user, this.password); 
-                PreparedStatement statement = connection.prepareStatement("SELECT uuid FROM HTML"); 
-                ResultSet results = statement.executeQuery()) {
-            while (results.next()) {
-                uuids.add(results.getString("uuid"));
-            }
-        }
+  @Override
+  public Optional<String> findContent(String uuid) throws SQLException {
+    try (
+      Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
+      PreparedStatement statement = connection.prepareStatement("SELECT content FROM XSLT WHERE uuid = ?")
+    ) {
+      statement.setString(1, uuid);
 
-        return uuids;
+      try (ResultSet results = statement.executeQuery()) {
+        return results.next() ? Optional.of(results.getString("content")) : Optional.empty();
+      }
+    }
+  }
+
+  @Override
+  public Optional<String> findXsdUuid(String uuid) throws SQLException {
+    try (
+      Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
+      PreparedStatement statement = connection.prepareStatement("SELECT xsd FROM XSLT WHERE uuid = ?")
+    ) {
+      statement.setString(1, uuid);
+
+      try (ResultSet results = statement.executeQuery()) {
+        return results.next() ? Optional.of(results.getString("xsd")) : Optional.empty();
+      }
+    }
+  }
+
+  @Override
+  public List<String> listXsd() throws SQLException {
+    final List<String> uuids = new ArrayList<>();
+
+    try (
+      Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
+      PreparedStatement statement = connection.prepareStatement("SELECT xsd FROM XSLT");
+      ResultSet results = statement.executeQuery()
+    ) {
+      while (results.next())
+        uuids.add(results.getString("xsd"));
     }
 
-    @Override
-    public Optional<String> findContent(String uuid) throws SQLException {
-        try (
-                Connection connection = DriverManager.getConnection(this.url, this.user, this.password); 
-                PreparedStatement statement = connection.prepareStatement("SELECT content FROM HTML WHERE uuid = ?")) {
-            statement.setString(1, uuid);
+    return uuids;
+  }
 
-            try (ResultSet results = statement.executeQuery()) {
-                return results.next() ? Optional.of(results.getString("content")) : Optional.empty();
-            }
-        }
+  @Override
+  public void insert(String uuid, String content) throws SQLException {
+    throw new IllegalArgumentException("An XSD UUID is required to store an XSLT document");
+  }
+
+  @Override
+  public void insert(String uuid, String content, String xsdUuid) throws SQLException {
+    try (
+      Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
+      PreparedStatement statement = connection.prepareStatement(
+        "INSERT INTO XSLT (uuid, content, xsd) VALUES (?, ?, ?)"
+      )
+    ) {
+      statement.setString(1, uuid);
+      statement.setString(2, content);
+      statement.setString(3, xsdUuid);
+      statement.executeUpdate();
     }
+  }
 
-    @Override
-    public void insert(String uuid, String content) throws SQLException {
-        try (
-                Connection connection = DriverManager.getConnection(this.url, this.user, this.password); 
-                PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO HTML (uuid, content) VALUES (?, ?)"
-        )) {
-            statement.setString(1, uuid);
-            statement.setString(2, content);
-            statement.executeUpdate();
-        }
+  @Override
+  public boolean delete(String uuid) throws SQLException {
+    try (
+      Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
+      PreparedStatement statement = connection.prepareStatement("DELETE FROM XSLT WHERE uuid = ?")
+    ) {
+      statement.setString(1, uuid);
+      return statement.executeUpdate() > 0;
     }
-
-    @Override
-    public boolean delete(String uuid) throws SQLException {
-        try (
-                Connection connection = DriverManager.getConnection(this.url, this.user, this.password); 
-                PreparedStatement statement = connection.prepareStatement("DELETE FROM HTML WHERE uuid = ?")) {
-            statement.setString(1, uuid);
-            return statement.executeUpdate() > 0;
-        }
-    }
-
-    @Override
-    public List<String> listXsd() throws SQLException {
-        final List<String> xsds = new ArrayList<>();
-
-        try (
-                Connection connection = DriverManager.getConnection(this.url, this.user, this.password); 
-                PreparedStatement statement = connection.prepareStatement("SELECT xsd FROM HTML"); 
-                ResultSet results = statement.executeQuery()) {
-            while (results.next()) {
-                xsds.add(results.getString("uuid"));
-            }
-        }
-
-        return xsds;
-    }
+  }
 }

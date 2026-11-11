@@ -27,7 +27,7 @@ public final class JdbcXmlPageStore implements XmlPageStore {
 
     try (
       Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
-      PreparedStatement statement = connection.prepareStatement("SELECT uuid FROM HTML");
+      PreparedStatement statement = connection.prepareStatement("SELECT uuid FROM XML");
       ResultSet results = statement.executeQuery()
     ) {
       while (results.next())
@@ -41,7 +41,7 @@ public final class JdbcXmlPageStore implements XmlPageStore {
   public Optional<String> findContent(String uuid) throws SQLException {
     try (
       Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
-      PreparedStatement statement = connection.prepareStatement("SELECT content FROM HTML WHERE uuid = ?")
+      PreparedStatement statement = connection.prepareStatement("SELECT content FROM XML WHERE uuid = ?")
     ) {
       statement.setString(1, uuid);
 
@@ -56,7 +56,7 @@ public final class JdbcXmlPageStore implements XmlPageStore {
     try (
       Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
       PreparedStatement statement = connection.prepareStatement(
-        "INSERT INTO HTML (uuid, content) VALUES (?, ?)"
+        "INSERT INTO XML (uuid, content) VALUES (?, ?)"
       )
     ) {
       statement.setString(1, uuid);
@@ -69,7 +69,7 @@ public final class JdbcXmlPageStore implements XmlPageStore {
   public boolean delete(String uuid) throws SQLException {
     try (
       Connection connection = DriverManager.getConnection(this.url, this.user, this.password);
-      PreparedStatement statement = connection.prepareStatement("DELETE FROM HTML WHERE uuid = ?")
+      PreparedStatement statement = connection.prepareStatement("DELETE FROM XML WHERE uuid = ?")
     ) {
       statement.setString(1, uuid);
       return statement.executeUpdate() > 0;

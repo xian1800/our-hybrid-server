@@ -35,11 +35,21 @@ import java.util.concurrent.TimeUnit;
 
 import es.uvigo.esei.dai.hybridserver.dao.HtmlPageStore;
 import es.uvigo.esei.dai.hybridserver.dao.JdbcHtmlPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.JdbcXmlPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.JdbcXsdPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.JdbcXsltPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.XmlPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.XsdPageStore;
+import es.uvigo.esei.dai.hybridserver.dao.XsltPageStore;
 import es.uvigo.esei.dai.hybridserver.http.HTTPParseException;
+import es.uvigo.esei.dai.hybridserver.http.DocumentController;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequest;
 import es.uvigo.esei.dai.hybridserver.http.HTTPRequestMethod;
 import es.uvigo.esei.dai.hybridserver.http.HTTPResponse;
 import es.uvigo.esei.dai.hybridserver.http.HTTPResponseStatus;
+import es.uvigo.esei.dai.hybridserver.xml.XMLController;
+import es.uvigo.esei.dai.hybridserver.xsd.XSDController;
+import es.uvigo.esei.dai.hybridserver.xslt.XSLTController;
 
 public class HybridServer implements AutoCloseable {
   private static final int DEFAULT_SERVICE_PORT = 8888;
@@ -51,6 +61,9 @@ public class HybridServer implements AutoCloseable {
   private final int servicePort;
   private final int numClients;
   private final HtmlPageStore pages;
+  private final DocumentController xmlController;
+  private final DocumentController xsdController;
+  private final XSLTController xsltController;
   private ServerSocket serverSocket;
   private Thread serverThread;
   private ExecutorService clientPool;
@@ -64,16 +77,20 @@ public class HybridServer implements AutoCloseable {
     this(readConfiguration(properties));
   }
 
-  private HybridServer(Configuration configuration) {
-    this(configuration, new JdbcHtmlPageStore(
-      configuration.dbUrl, configuration.dbUser, configuration.dbPassword
-    ));
+  public HybridServer(Configuration configuration) {
+    this(settingsFrom(configuration));
   }
 
-  private HybridServer(Configuration configuration, HtmlPageStore pages) {
+  private HybridServer(ServerSettings configuration) {
     this.servicePort = configuration.port;
     this.numClients = configuration.numClients;
-    this.pages = pages;
+    this.pages = new JdbcHtmlPageStore(configuration.dbUrl, configuration.dbUser, configuration.dbPassword);
+    final XmlPageStore xmlPages = new JdbcXmlPageStore(configuration.dbUrl, configuration.dbUser, configuration.dbPassword);
+    final XsdPageStore xsdPages = new JdbcXsdPageStore(configuration.dbUrl, configuration.dbUser, configuration.dbPassword);
+    final XsltPageStore xsltPages = new JdbcXsltPageStore(configuration.dbUrl, configuration.dbUser, configuration.dbPassword);
+    this.xmlController = new XMLController(xmlPages);
+    this.xsdController = new XSDController(xsdPages);
+    this.xsltController = new XSLTController(xsltPages, xsdPages);
   }
 
   public int getPort() {
@@ -187,6 +204,12 @@ public class HybridServer implements AutoCloseable {
       response.putParameter("Content-Type", "text/html");
     } else if (resourceName.equals("html")) {
       this.createHtmlResponse(request, response);
+    } else if (resourceName.equals("xml")) {
+      return this.xmlController.handle(request);
+    } else if (resourceName.equals("xsd")) {
+      return this.xsdController.handle(request);
+    } else if (resourceName.equals("xslt")) {
+      return this.xsltController.handle(request);
     } else {
       response.setStatus(HTTPResponseStatus.S400);
     }
@@ -254,11 +277,7 @@ public class HybridServer implements AutoCloseable {
     return properties;
   }
 
-  private static Configuration defaultConfiguration() {
-    return readConfiguration(new Properties());
-  }
-
-  private static Configuration readConfiguration(Properties overrides) {
+  private static ServerSettings readConfiguration(Properties overrides) {
     final Properties properties = defaultProperties();
     properties.putAll(Objects.requireNonNull(overrides, "properties"));
 
@@ -271,13 +290,40 @@ public class HybridServer implements AutoCloseable {
     if (numClients < 1)
       throw new IllegalArgumentException("Configuration property 'numClients' must be greater than 0");
 
-    return new Configuration(
+    return new ServerSettings(
       port,
       numClients,
       requireProperty(properties, "db.url"),
       requireProperty(properties, "db.user"),
       properties.getProperty("db.password")
     );
+  }
+
+  private static ServerSettings settingsFrom(Configuration configuration) {
+    Objects.requireNonNull(configuration, "configuration");
+    final int port = configuration.getHttpPort();
+    final int numClients = configuration.getNumClients();
+
+    if (port < 1 || port > 65535)
+      throw new IllegalArgumentException("Configuration property 'httpPort' must be between 1 and 65535");
+
+    if (numClients < 1)
+      throw new IllegalArgumentException("Configuration property 'numClients' must be greater than 0");
+
+    return new ServerSettings(
+      port,
+      numClients,
+      requireValue(configuration.getDbURL(), "db.url"),
+      requireValue(configuration.getDbUser(), "db.user"),
+      configuration.getDbPassword()
+    );
+  }
+
+  private static String requireValue(String value, String property) {
+    if (value == null || value.trim().isEmpty())
+      throw new IllegalArgumentException("Configuration property '" + property + "' must not be empty");
+
+    return value.trim();
   }
 
   private static int parseInteger(Properties properties, String key) {
@@ -297,14 +343,14 @@ public class HybridServer implements AutoCloseable {
     return value.trim();
   }
 
-  private static final class Configuration {
+  private static final class ServerSettings {
     private final int port;
     private final int numClients;
     private final String dbUrl;
     private final String dbUser;
     private final String dbPassword;
 
-    private Configuration(int port, int numClients, String dbUrl, String dbUser, String dbPassword) {
+    private ServerSettings(int port, int numClients, String dbUrl, String dbUser, String dbPassword) {
       this.port = port;
       this.numClients = numClients;
       this.dbUrl = dbUrl;

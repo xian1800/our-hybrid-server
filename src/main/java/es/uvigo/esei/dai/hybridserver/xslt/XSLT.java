@@ -1,22 +1,30 @@
 package es.uvigo.esei.dai.hybridserver.xslt;
 
 public class XSLT {
-  private String uuids;
+  private String uuid;
   private String content;
-  private String xsds;
+  private String xsdUuid;
 
-  public XSLT(String uuids, String content, String xsds) {
-    this.uuids = uuids;
+  public XSLT(String uuid, String content, String xsdUuid) {
+    this.uuid = uuid;
     this.content = content;
-    this.xsds = xsds;
+    this.xsdUuid = xsdUuid;
+  }
+
+  public String getUuid() {
+    return this.uuid;
+  }
+
+  public void setUuid(String uuid) {
+    this.uuid = uuid;
   }
 
   public String getUuids() {
-    return this.uuids;
+    return this.uuid;
   }
 
   public void setUuids(String uuids) {
-    this.uuids = uuids;
+    this.uuid = uuids;
   }
 
   public String getContent() {
@@ -27,11 +35,19 @@ public class XSLT {
     this.content = content;
   }
 
-    public String getXsds() {
-    return this.xsds;
+  public String getXsdUuid() {
+    return this.xsdUuid;
   }
 
-  public void setXsds(String xsds) {
-    this.xsds = xsds;
+  public void setXsdUuid(String xsdUuid) {
+    this.xsdUuid = xsdUuid;
+  }
+
+  public String getXsds() {
+    return this.xsdUuid;
+  }
+
+  public void setXsds(String xsdUuid) {
+    this.xsdUuid = xsdUuid;
   }
 }

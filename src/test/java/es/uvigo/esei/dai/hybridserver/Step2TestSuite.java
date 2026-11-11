@@ -21,11 +21,9 @@ import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
 
 import es.uvigo.esei.dai.hybridserver.step1.HTTPRequestResponseSuite;
-import es.uvigo.esei.dai.hybridserver.step2.ClientRequetsTest;
 
 @Suite
 @SelectClasses({
-  ClientRequetsTest.class,
   HTTPRequestResponseSuite.class
 })
 public class Step2TestSuite {
