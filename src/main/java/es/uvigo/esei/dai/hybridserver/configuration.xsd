@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://www.esei.uvigo.es/dai/hybridserver"
+    xmlns:tns="http://www.esei.uvigo.es/dai/hybridserver"
+    elementFormDefault="qualified"
+    version="1.0">
+
+    <element name="configuration" type="tns:configuration"/>
+
+    <complexType name="configuration">
+        <sequence>
+            <element name="connections" type="tns:connections"/>
+            <element name="database" type="tns:database"/>
+            <element name="servers" type="tns:servers"/>
+        </sequence>
+    </complexType>
+
+    <complexType name="connections">
+        <sequence>
+            <element name="http" type="tns:http"/>
+            <element name="webservice" type="anyURI"/>
+            <element name="numClients" type="positiveInteger"/>
+        </sequence>
+    </complexType>
+
+    <simpleType name="http">
+		<restriction base="unsignedShort">
+			<minInclusive value="1" />
+			<maxInclusive value="65535" />
+		</restriction>
+	</simpleType>
+
+    <simpleType name="webservice">
+        <restriction base="string">
+            <pattern value="http://localhost:[0-9]{5}/[a-zA-Z0-9_-]+"/>
+        </restriction>
+    </simpleType>
+    
+
+    <complexType name="database">
+        <sequence>
+            <element name="user" type="tns:user"/>
+            <element name="password" type="tns:user"/>
+            <element name="url" type="tns:url"/>
+        </sequence>
+    </complexType>
+
+    <simpleType name="user">
+        <restriction base="string">
+            <pattern value="[a-zA-Z0-9 _-]+"/>
+        </restriction>
+    </simpleType>
+
+    <simpleType name="url">
+        <restriction base="string">
+            <pattern value="jdbc:mysql://localhost:[0-9]{4}/[a-zA-Z0-9_-]+"/>
+        </restriction>
+    </simpleType>
+
+    <complexType name="servers">
+        <sequence>
+            <element name="server" type="tns:server" maxOccurs="unbounded"/>
+        </sequence>
+    </complexType>
+
+    <complexType name="server">
+        <attribute name="name" type="tns:user" use="required"/>
+        <attribute name="wsdl" type="anyURI" use="required"/>
+        <attribute name="namespace" type="tns:namespace" use="required"/>
+        <attribute name="service" type="tns:user" use="required"/>
+        <attribute name="httpAddress" type="tns:httpAddress" use="required"/>
+    </complexType>
+
+    <simpleType name="wsdl">
+        <restriction base="string">
+            <pattern value="http://localhost:2000[0-9]/[a-zA-Z0-9_-]+\?wsdl"/>
+        </restriction>
+    </simpleType>
+
+    <simpleType name="namespace">
+        <restriction base="string">
+            <pattern value="http://hybridserver.dai.esei.uvigo.es/"/>
+        </restriction>
+    </simpleType>
+
+    <simpleType name="httpAddress">
+        <restriction base="string">
+            <pattern value="http://localhost:[0-9]{5}/"/>
+        </restriction>
+    </simpleType>
+</schema>
